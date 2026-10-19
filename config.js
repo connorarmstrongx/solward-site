@@ -6,6 +6,6 @@
  * leadEmail:    the address used by that email fallback.
  */
 window.SOLWARD = {
-  formEndpoint: "",
+  formEndpoint: "https://formspree.io/f/xjygdpbp",
   leadEmail: "hello@solward.co.nz"
 };
