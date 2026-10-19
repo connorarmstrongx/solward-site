@@ -123,6 +123,7 @@
   var bill = document.getElementById("bill");
   if(bill){
     var state = { bill:320, orient:1, usage:.4, batt:1 };
+    var lastCalc = null;
     var nums = {};
     ["mSize","mPanels","mBatt","mGen","mCover"].forEach(function(id){ nums[id] = { el:document.getElementById(id), cur:0 }; });
 
@@ -151,6 +152,7 @@
       var direct = Math.min(useKwh*state.usage, gen);
       var stored = state.batt ? Math.min(Math.max(gen - direct,0), battKwh*365*0.9*0.9) : 0;
       var cover = Math.min(Math.round((direct + stored)/useKwh*100), 95);
+      lastCalc = { size:size, panels:panels, battKwh:battKwh, gen:gen, cover:cover };
       animateTo("mSize", size, 1);
       animateTo("mPanels", panels);
       animateTo("mBatt", battKwh);
@@ -166,6 +168,11 @@
     chipGroup(document.getElementById("usage"),  function(b){ state.usage  = +b.dataset.v; compute(); });
     chipGroup(document.getElementById("batt"),   function(b){ state.batt   = +b.dataset.v; compute(); });
     compute();
+    var handoff = document.querySelector(".readout a.btn");
+    if(handoff) handoff.addEventListener("click", function(){
+      var o = document.querySelector("#orient .chip[aria-pressed=true]");
+      try{ sessionStorage.setItem("sw-calc", JSON.stringify({ bill:state.bill, usage:state.usage, batt:state.batt, orient:o ? o.textContent : "", calc:lastCalc })); }catch(e){}
+    });
   }
 
   /* ---- commercial battery toggle ---- */
@@ -239,28 +246,107 @@
     prop.querySelectorAll("[data-back]").forEach(function(btn){
       btn.addEventListener("click", function(){ showStep(+btn.closest(".pstep").dataset.step - 1); });
     });
+    /* ---- submission ---- */
+    var cfg = window.SOLWARD || {};
+    var endpoint = String(cfg.formEndpoint || "").trim();
+    var leadEmail = cfg.leadEmail || "hello@solward.co.nz";
+    var pageLoadedAt = Date.now();
+    var calcNote = "";
     var send = prop.querySelector("[data-send]");
-    send.addEventListener("click", function(){
-      var s = send.closest(".pstep"); clearErr(s);
-      if(!data.name) return fail(s,"Add your name so we know who we are replying to.");
-      if(!data.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) return fail(s,"Add an email address we can reply to.");
-      var lines = ["Property brief — Solward",""];
-      ["type","interest","address","roof","bill","when"].forEach(function(k){
-        if(data[k]) lines.push(labels[k] + ": " + data[k]);
-      });
+    var mailBtn = prop.querySelector("[data-mail]");
+    var footEl = prop.querySelector(".paper .foot");
+    var footOrig = footEl ? footEl.textContent : "";
+    var sending = false;
+
+    function briefLines(){
+      var lines = ["Property brief — Solward", ""];
+      ["type","interest","address","roof","bill","when"].forEach(function(k){ if(data[k]) lines.push(labels[k] + ": " + data[k]); });
       if(data.notes) lines.push("", "Notes: " + data.notes);
+      if(calcNote) lines.push("", calcNote);
       lines.push("", "Name: " + data.name, "Email: " + data.email);
       if(data.phone) lines.push("Phone: " + data.phone);
-      var href = "mailto:hello@solward.co.nz?subject=" + encodeURIComponent("Property brief — " + (data.address || data.name))
-        + "&body=" + encodeURIComponent(lines.join("\n"));
-      window.location.href = href;
+      return lines;
+    }
+    function openMail(){
+      window.location.href = "mailto:" + leadEmail + "?subject=" + encodeURIComponent("Property brief — " + (data.address || data.name))
+        + "&body=" + encodeURIComponent(briefLines().join("\n"));
+    }
+    function payload(){
+      return {
+        _subject: "New Solward proposal request — " + (data.address || data.name),
+        _replyto: data.email,
+        name: data.name, email: data.email, phone: data.phone || "",
+        property_type: data.type || "", interest: data.interest || "", address: data.address || "",
+        roof: data.roof || "", monthly_bill: data.bill || "", busiest: data.when || "",
+        notes: data.notes || "", system_shaper: calcNote,
+        page: location.href, submitted_at: new Date().toISOString(),
+        _gotcha: (document.getElementById("hp") || {}).value || ""
+      };
+    }
+    function finish(){
+      sending = false; send.disabled = false; send.textContent = "Send the brief";
+      try{ sessionStorage.removeItem("sw-calc"); }catch(e){}
+      var to = document.getElementById("sentTo"); if(to) to.textContent = data.email;
+      if(footEl) footEl.textContent = "Sent. A brief is not a quote; scope and price follow the site visit.";
+      if(typeof window.gtag === "function") window.gtag("event", "generate_lead");
       showStep(5);
+    }
+
+    send.addEventListener("click", function(){
+      if(sending) return;
+      var s = send.closest(".pstep"); clearErr(s); mailBtn.hidden = true;
+      if(!data.name) return fail(s, "Add your name so we know who we are replying to.");
+      if(!data.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) return fail(s, "Add an email address we can reply to.");
+      if(data.phone && data.phone.replace(/\D/g, "").length < 7) return fail(s, "That phone number looks short. Check it, or leave it blank.");
+      if(!endpoint){ openMail(); showStep(5); return; }            // no form service connected yet
+      var p = payload();
+      if(p._gotcha || Date.now() - pageLoadedAt < 4000){ showStep(5); return; }   // bots: look successful, send nothing
+      sending = true; send.disabled = true; send.textContent = "Sending…";
+      var ctl = ("AbortController" in window) ? new AbortController() : null;
+      var timer = setTimeout(function(){ if(ctl) ctl.abort(); }, 15000);
+      fetch(endpoint, { method:"POST", headers:{ "Content-Type":"application/json", "Accept":"application/json" },
+                        body: JSON.stringify(p), signal: ctl ? ctl.signal : undefined })
+        .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok:r.ok, body:j }; }); })
+        .then(function(res){
+          clearTimeout(timer);
+          if(!res.ok || (res.body && res.body.ok === false)) throw new Error("rejected");
+          finish();
+        })
+        .catch(function(){
+          clearTimeout(timer);
+          sending = false; send.disabled = false; send.textContent = "Send the brief";
+          fail(s, "We could not send that just now. Please try again, or email it to us instead.");
+          mailBtn.hidden = false;
+        });
     });
+    mailBtn.addEventListener("click", function(){ openMail(); });
+
+    /* ---- hand-off from the system shaper on the Residential page ---- */
+    try{
+      var raw = sessionStorage.getItem("sw-calc");
+      if(raw){
+        var c = JSON.parse(raw), k = c.calc || {}, b = +c.bill;
+        var pick = function(group, value){
+          var el = prop.querySelector('[data-single="' + group + '"] .chip[data-v="' + value + '"]'); if(el) el.click();
+        };
+        pick("type", "Home");
+        pick("interest", c.batt ? "Solar and battery" : "Solar only");
+        pick("bill", b < 200 ? "Under $200" : b < 400 ? "$200 to $400" : b < 800 ? "$400 to $800" : "Over $800");
+        if(c.usage <= .25) pick("when", "Evenings and weekends"); else if(c.usage >= .55) pick("when", "Daytime, weekdays");
+        calcNote = "System shaper (indicative, not a quote): " + k.size + " kW, about " + k.panels + " panels, "
+          + (k.battKwh ? k.battKwh + " kWh battery" : "no battery") + ", about " + Number(k.gen).toLocaleString("en-NZ")
+          + " kWh a year, roof facing " + (c.orient || "not stated") + ", monthly bill about $" + b + ".";
+        var note = prop.querySelector("[data-prefill]"); if(note) note.hidden = false;
+      }
+    }catch(e){}
+
     prop.querySelector("[data-restart]").addEventListener("click", function(){
-      data = {};
-      prop.querySelectorAll(".chip").forEach(function(c){ c.setAttribute("aria-pressed","false"); });
+      data = {}; calcNote = "";
+      prop.querySelectorAll(".chip").forEach(function(c){ c.setAttribute("aria-pressed", "false"); });
       prop.querySelectorAll("[data-f]").forEach(function(i){ i.value = ""; });
       Object.keys(labels).forEach(function(k){ setRow(k, ""); });
+      var note = prop.querySelector("[data-prefill]"); if(note) note.hidden = true;
+      mailBtn.hidden = true; if(footEl) footEl.textContent = footOrig;
       showStep(1);
     });
   }
