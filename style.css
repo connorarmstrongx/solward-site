@@ -144,7 +144,7 @@ html.arriving #wipe{ transform:translateY(0); border-radius:0; }
   pointer-events:none; animation:glow 18s ease-in-out infinite alternate; }
 @keyframes glow{ from{ transform:translate3d(-2%,0,0) scale(1); } to{ transform:translate3d(4%,3%,0) scale(1.1); } }
 .hero-motif{ position:absolute; right:-8%; bottom:-24%; width:min(64vw,760px); aspect-ratio:400/448;
-  background:url("/assets/symbol.png") no-repeat center/contain; opacity:.075; pointer-events:none; will-change:transform; }
+  background:url("/symbol.png") no-repeat center/contain; opacity:.075; pointer-events:none; will-change:transform; }
 .hero .wrap{ position:relative; z-index:2; }
 .hero h1{ font-size:clamp(2.7rem,7.6vw,5.6rem); max-width:13ch; }
 .hero-sub{ margin-top:1.9rem; max-width:44ch; color:var(--silver); }
