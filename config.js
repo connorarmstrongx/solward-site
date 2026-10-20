@@ -1,8 +1,7 @@
 /* Solward site settings
  *
- * formEndpoint: paste your Formspree form address between the quotes, for example
- *               "https://formspree.io/f/abcdwxyz"
- *               While this is empty, the proposal form opens the visitor's email app instead.
+ * formEndpoint: the Formspree form address. Enquiries from the "Get a free quote" form are sent here.
+ *               If it is ever empty, the form falls back to opening the visitor's email app.
  * leadEmail:    the address used by that email fallback.
  */
 window.SOLWARD = {
