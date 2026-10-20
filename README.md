@@ -8,6 +8,7 @@ index.html        Home                 /
 residential.html  Residential          /residential
 commercial.html   Commercial           /commercial
 about.html        About                /about
+contact.html      Contact              /contact
 proposal.html     Get a free quote     /proposal
 privacy.html      Privacy policy       /privacy
 finance.html      Finance options      /finance

@@ -358,7 +358,7 @@
       if(sending) return;
       var s = send.closest(".pstep"); clearErr(s); mailBtn.hidden = true;
       if(!data.name) return fail(s, "Add your name so we know who we are replying to.");
-      if(!data.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) return fail(s, "Add an email address we can reply to.");
+      if(!data.email || !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(data.email)) return fail(s, "Check the email address, it looks incomplete (for example, ending in .co.nz).");
       if(data.phone && data.phone.replace(/\D/g, "").length < 7) return fail(s, "That phone number looks short. Check it, or leave it blank.");
       if(!endpoint){ openMail(); showStep(5); return; }            // no form service connected yet
       var p = payload();
@@ -371,13 +371,13 @@
         .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok:r.ok, body:j }; }); })
         .then(function(res){
           clearTimeout(timer);
-          if(!res.ok || (res.body && res.body.ok === false)) throw new Error("rejected");
+          if(!res.ok || (res.body && res.body.ok === false)){ var er = new Error("rejected"); er.detail = res.body && res.body.errors && res.body.errors[0] && res.body.errors[0].message; throw er; }
           finish();
         })
-        .catch(function(){
+        .catch(function(e){
           clearTimeout(timer);
           sending = false; send.disabled = false; send.textContent = "Send the brief";
-          fail(s, "We could not send that just now. Please try again, or email it to us instead.");
+          fail(s, (e && e.detail ? "Formspree said: " + e.detail + ". " : "We could not send that just now. ") + "Please check your details and try again, or email it to us instead.");
           mailBtn.hidden = false;
         });
     });
@@ -426,5 +426,36 @@
       mailBtn.hidden = true; if(footEl) footEl.textContent = footOrig;
       showStep(1);
     });
+  }
+
+  /* ---- contact form ---- */
+  var cf = document.getElementById("contactForm");
+  if(cf){
+    var ccfg = window.SOLWARD || {}, cend = String(ccfg.formEndpoint || "").trim();
+    if(/^[a-z0-9]{6,}$/i.test(cend)) cend = "https://formspree.io/f/" + cend;
+    else if(/^formspree\.io\//i.test(cend)) cend = "https://" + cend;
+    var cto = ccfg.leadEmail || "hello@solward.co.nz", cLoaded = Date.now(), cSending = false;
+    var cv = function(k){ var el = cf.querySelector('[data-c="'+k+'"]'); return el ? el.value.trim() : ""; };
+    var cErr = document.getElementById("cErr"), cSend = document.getElementById("cSend"), cMail = document.getElementById("cMail");
+    var cMailOpen = function(){ window.location.href = "mailto:" + cto + "?subject=" + encodeURIComponent("Website message from " + cv("name")) + "&body=" + encodeURIComponent(cv("message") + "\n\n" + cv("name") + "\n" + cv("email") + (cv("phone") ? "\n" + cv("phone") : "")); };
+    var cDone = function(){ cf.querySelectorAll(".ffield,.pnav,.fine,.err,.muted").forEach(function(e){ e.hidden = true; }); document.getElementById("cTo").textContent = cv("email"); document.getElementById("cThanks").hidden = false; };
+    cSend.addEventListener("click", function(){
+      if(cSending) return; cErr.textContent = ""; cMail.hidden = true;
+      if(!cv("name")) { cErr.textContent = "Add your name so we know who we are replying to."; return; }
+      if(!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(cv("email"))) { cErr.textContent = "Check the email address, it looks incomplete (for example, ending in .co.nz)."; return; }
+      if(cv("message").length < 3) { cErr.textContent = "Add a short message so we know how to help."; return; }
+      if(!cend){ cMailOpen(); cDone(); return; }
+      var hp = (document.getElementById("chp") || {}).value || "";
+      if(hp || Date.now() - cLoaded < 3000){ cDone(); return; }
+      cSending = true; cSend.disabled = true; cSend.textContent = "Sending…";
+      var ctl = ("AbortController" in window) ? new AbortController() : null, tm = setTimeout(function(){ if(ctl) ctl.abort(); }, 15000);
+      fetch(cend, { method:"POST", headers:{ "Content-Type":"application/json", "Accept":"application/json" }, signal: ctl ? ctl.signal : undefined,
+        body: JSON.stringify({ _subject:"New Solward website message — " + cv("name"), _replyto: cv("email"), name: cv("name"), email: cv("email"), phone: cv("phone"), message: cv("message"), page: location.href, submitted_at: new Date().toISOString() }) })
+        .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok:r.ok, body:j }; }); })
+        .then(function(res){ clearTimeout(tm); if(!res.ok || (res.body && res.body.ok === false)){ var er = new Error("rejected"); er.detail = res.body && res.body.errors && res.body.errors[0] && res.body.errors[0].message; throw er; } cSending = false; cSend.disabled = false; cSend.textContent = "Send message"; cDone(); })
+        .catch(function(e){ clearTimeout(tm); cSending = false; cSend.disabled = false; cSend.textContent = "Send message";
+          cErr.textContent = (e && e.detail ? "Formspree said: " + e.detail + ". " : "We could not send that just now. ") + "Please check your details and try again, or email us instead."; cMail.hidden = false; });
+    });
+    cMail.addEventListener("click", cMailOpen);
   }
 })();
