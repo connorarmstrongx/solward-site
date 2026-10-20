@@ -8,8 +8,12 @@ index.html        Home                 /
 residential.html  Residential          /residential
 commercial.html   Commercial           /commercial
 about.html        About                /about
-proposal.html     Start a proposal     /proposal
-privacy.html      Privacy notice       /privacy
+proposal.html     Get a free quote     /proposal
+privacy.html      Privacy policy       /privacy
+finance.html      Finance options      /finance
+learn.html        Learn hub            /learn
+(6 article pages) why-go-solar, where-solar-is-going, solar-and-batteries, how-home-solar-works, is-your-home-right-for-solar, solar-for-business
+home-packages.html / commercial-packages.html   Small, Medium, Large
 404.html          Not-found page
 config.js         Site settings: the form address goes here
 style.css         All styling, shared by every page
@@ -22,8 +26,8 @@ Vercel serves `about.html` at `/about` (clean URLs are on in `vercel.json`).
 ## Capturing leads
 The proposal form sends each brief to a Formspree form, which emails it to you and keeps a copy.
 1. Create a free account at formspree.io and make a new form. Set the email address(es) leads should go to.
-2. Copy the form address. It looks like `https://formspree.io/f/abcdwxyz`.
-3. Open `config.js` in GitHub, click the pencil, paste the address between the quotes after `formEndpoint:`, and commit.
+2. Copy the form address. It looks like `https://formspree.io/f/abcdwxyz` (just the ID, `abcdwxyz`, also works).
+3. Open `config.js` (the update zip does NOT include it, so it never overwrites yours) in GitHub, click the pencil, paste the address between the quotes after `formEndpoint:`, and commit.
 4. Send a test enquiry from the live site and check the inbox (and the spam folder).
 
 While `formEndpoint` is empty the form falls back to opening the visitor's email app, so nothing breaks.
@@ -41,3 +45,8 @@ Formspree's free plan covers 50 submissions a month and keeps them in its dashbo
 - Have the wording on `privacy.html` checked by someone qualified
 - Confirm the "licensed electrician" wording is accurate for how installs are carried out
 - Submit `https://solward.co.nz/sitemap.xml` in Google Search Console
+
+## Keeping facts current
+- Bank figures on `finance.html` were checked on 20 October 2026. Update the `finance` page when lenders change terms.
+- Package sizes and inclusions are in `home-packages.html` and `commercial-packages.html`. Confirm them against what Solward offers.
+- Phone 09 215 7434 and Instagram are set in the nav and footer of every page.

@@ -200,11 +200,71 @@
     });
   });
 
+/* ---- finance repayment estimator ---- */
+  var fAmt = document.getElementById("fAmt");
+  if(fAmt){
+    var fRate = document.getElementById("fRate"), fTerm = document.getElementById("fTerm");
+    var fmt = function(n){ return "$" + Math.round(n).toLocaleString("en-NZ"); };
+    var estimate = function(){
+      var P = +fAmt.value, R = +fRate.value, Y = +fTerm.value, n = Y * 12, r = R / 100 / 12;
+      var pay = r === 0 ? P / n : P * r / (1 - Math.pow(1 + r, -n)), total = pay * n;
+      document.getElementById("fAmtV").textContent = fmt(P);
+      document.getElementById("fRateV").textContent = (Math.round(R * 100) / 100) + "%";
+      document.getElementById("fTermV").textContent = Y + (Y === 1 ? " year" : " years");
+      document.getElementById("mPay").textContent = fmt(pay);
+      document.getElementById("mTotal").textContent = fmt(total);
+      document.getElementById("mInterest").textContent = fmt(total - P);
+    };
+    var clearPresets = function(){ document.querySelectorAll("#fpresets .chip").forEach(function(c){ c.setAttribute("aria-pressed","false"); }); };
+    [fAmt, fRate, fTerm].forEach(function(el){ el.addEventListener("input", function(){ clearPresets(); estimate(); }); });
+    document.querySelectorAll("#fpresets .chip").forEach(function(c){
+      c.addEventListener("click", function(){
+        clearPresets(); c.setAttribute("aria-pressed","true");
+        fRate.value = c.dataset.r; fTerm.value = c.dataset.y; estimate();
+      });
+    });
+    estimate();
+  }
+
+  /* ---- home package chooser ---- */
+  var chBill = document.getElementById("chBill");
+  if(chBill){
+    var chEv = document.getElementById("chEv");
+    var keys = ["small","medium","large"], names = ["Small","Medium","Large"], kws = ["4.4","7.0","10.1"];
+    var recommend = function(){
+      var b = +chBill.value, lvl = b <= 265 ? 0 : b <= 385 ? 1 : 2;
+      if(chEv.getAttribute("aria-pressed") === "true") lvl = Math.min(lvl + 1, 2);
+      document.getElementById("chBillV").textContent = "$" + b;
+      document.getElementById("chName").textContent = names[lvl] + " package";
+      document.getElementById("chKw").textContent = "about " + kws[lvl] + " kW";
+      document.getElementById("chLink").href = "/proposal?package=home-" + keys[lvl];
+      document.querySelectorAll("[data-pkg]").forEach(function(c){ c.classList.toggle("is-rec", c.dataset.pkg === keys[lvl]); });
+    };
+    chBill.addEventListener("input", recommend);
+    chEv.addEventListener("click", function(){ chEv.setAttribute("aria-pressed", chEv.getAttribute("aria-pressed") === "true" ? "false" : "true"); recommend(); });
+    recommend();
+  }
+
+  /* ---- article contents: highlight the section being read ---- */
+  var tocLinks = document.querySelectorAll(".toc a");
+  if(tocLinks.length && "IntersectionObserver" in window){
+    var heads = Array.prototype.slice.call(document.querySelectorAll(".art-body h2[id]"));
+    var spy = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if(e.isIntersecting){
+          tocLinks.forEach(function(a){ a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id); });
+        }
+      });
+    }, { rootMargin:"-18% 0px -72% 0px" });
+    heads.forEach(function(h){ spy.observe(h); });
+  }
+
+  
   /* ---- proposal builder ---- */
   var prop = document.getElementById("v-proposal");
   if(prop){
     var data = {};
-    var labels = { type:"Property", interest:"Interest", address:"Address", roof:"Roof", bill:"Monthly bill", when:"Busiest", name:"Contact" };
+    var labels = { type:"Property", interest:"Interest", address:"Address", roof:"Roof", bill:"Monthly bill", when:"Busiest", finance:"Finance", package:"Package", name:"Contact" };
     function setRow(key, val){
       var row = prop.querySelector('[data-row="'+key+'"]');
       if(!row) return;
@@ -249,6 +309,8 @@
     /* ---- submission ---- */
     var cfg = window.SOLWARD || {};
     var endpoint = String(cfg.formEndpoint || "").trim();
+    if(/^[a-z0-9]{6,}$/i.test(endpoint)) endpoint = "https://formspree.io/f/" + endpoint;      // just the form ID
+    else if(/^formspree\.io\//i.test(endpoint)) endpoint = "https://" + endpoint;            // missing https://
     var leadEmail = cfg.leadEmail || "hello@solward.co.nz";
     var pageLoadedAt = Date.now();
     var calcNote = "";
@@ -259,8 +321,8 @@
     var sending = false;
 
     function briefLines(){
-      var lines = ["Property brief — Solward", ""];
-      ["type","interest","address","roof","bill","when"].forEach(function(k){ if(data[k]) lines.push(labels[k] + ": " + data[k]); });
+      var lines = ["Free quote request — Solward", ""];
+      ["type","interest","package","address","roof","bill","when","finance"].forEach(function(k){ if(data[k]) lines.push(labels[k] + ": " + data[k]); });
       if(data.notes) lines.push("", "Notes: " + data.notes);
       if(calcNote) lines.push("", calcNote);
       lines.push("", "Name: " + data.name, "Email: " + data.email);
@@ -268,17 +330,17 @@
       return lines;
     }
     function openMail(){
-      window.location.href = "mailto:" + leadEmail + "?subject=" + encodeURIComponent("Property brief — " + (data.address || data.name))
+      window.location.href = "mailto:" + leadEmail + "?subject=" + encodeURIComponent("Free quote request — " + (data.address || data.name))
         + "&body=" + encodeURIComponent(briefLines().join("\n"));
     }
     function payload(){
       return {
-        _subject: "New Solward proposal request — " + (data.address || data.name),
+        _subject: "New Solward free quote request — " + (data.address || data.name),
         _replyto: data.email,
         name: data.name, email: data.email, phone: data.phone || "",
         property_type: data.type || "", interest: data.interest || "", address: data.address || "",
         roof: data.roof || "", monthly_bill: data.bill || "", busiest: data.when || "",
-        notes: data.notes || "", system_shaper: calcNote,
+        notes: data.notes || "", package: data.package || "", finance: data.finance || "", system_shaper: calcNote,
         page: location.href, submitted_at: new Date().toISOString(),
         _gotcha: (document.getElementById("hp") || {}).value || ""
       };
@@ -338,6 +400,21 @@
           + " kWh a year, roof facing " + (c.orient || "not stated") + ", monthly bill about $" + b + ".";
         var note = prop.querySelector("[data-prefill]"); if(note) note.hidden = false;
       }
+    }catch(e){}
+
+    /* ---- hand-off from package and finance pages: /proposal?package=home-medium&finance=yes ---- */
+    try{
+      var qs = new URLSearchParams(location.search), pk = (qs.get("package") || "").toLowerCase().split("-");
+      var pickQ = function(group, value){ var el = prop.querySelector('[data-single="' + group + '"] .chip[data-v="' + value + '"]'); if(el) el.click(); };
+      if(pk.length === 2 && /^(home|commercial)$/.test(pk[0]) && /^(small|medium|large)$/.test(pk[1])){
+        var nm = pk[1].charAt(0).toUpperCase() + pk[1].slice(1);
+        data.package = (pk[0] === "home" ? "Home" : "Commercial") + " package: " + nm;
+        setRow("package", data.package);
+        pickQ("type", pk[0] === "home" ? "Home" : "Commercial building");
+        var note2 = prop.querySelector("[data-prefill]");
+        if(note2){ note2.textContent = "Pre-filled from the " + data.package + " you chose. Change anything that is not right."; note2.hidden = false; }
+      }
+      if(qs.get("finance") === "yes") pickQ("finance", "Yes, interested in finance");
     }catch(e){}
 
     prop.querySelector("[data-restart]").addEventListener("click", function(){
