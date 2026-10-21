@@ -16,6 +16,7 @@ learn.html        Learn hub            /learn
 (6 article pages) why-go-solar, where-solar-is-going, solar-and-batteries, how-home-solar-works, is-your-home-right-for-solar, solar-for-business
 home-packages.html / commercial-packages.html   Small, Medium, Large
 404.html          Not-found page
+pixel.js          Meta Pixel (ID 982359091595847), loaded by every page
 config.js         Site settings: the form address goes here
 style.css         All styling, shared by every page
 app.js            All behaviour, shared by every page

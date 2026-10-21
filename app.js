@@ -351,6 +351,7 @@
       var to = document.getElementById("sentTo"); if(to) to.textContent = data.email;
       if(footEl) footEl.textContent = "Sent. A brief is not a quote; scope and price follow the site visit.";
       if(typeof window.gtag === "function") window.gtag("event", "generate_lead");
+      try{ if(typeof window.fbq === "function") window.fbq("track", "Lead"); }catch(e){}
       showStep(5);
     }
 
@@ -452,7 +453,7 @@
       fetch(cend, { method:"POST", headers:{ "Content-Type":"application/json", "Accept":"application/json" }, signal: ctl ? ctl.signal : undefined,
         body: JSON.stringify({ _subject:"New Solward website message — " + cv("name"), _replyto: cv("email"), name: cv("name"), email: cv("email"), phone: cv("phone"), message: cv("message"), page: location.href, submitted_at: new Date().toISOString() }) })
         .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok:r.ok, body:j }; }); })
-        .then(function(res){ clearTimeout(tm); if(!res.ok || (res.body && res.body.ok === false)){ var er = new Error("rejected"); er.detail = res.body && res.body.errors && res.body.errors[0] && res.body.errors[0].message; throw er; } cSending = false; cSend.disabled = false; cSend.textContent = "Send message"; cDone(); })
+        .then(function(res){ clearTimeout(tm); if(!res.ok || (res.body && res.body.ok === false)){ var er = new Error("rejected"); er.detail = res.body && res.body.errors && res.body.errors[0] && res.body.errors[0].message; throw er; } cSending = false; cSend.disabled = false; cSend.textContent = "Send message"; try{ if(typeof window.fbq === "function") window.fbq("track", "Lead"); }catch(e){} cDone(); })
         .catch(function(e){ clearTimeout(tm); cSending = false; cSend.disabled = false; cSend.textContent = "Send message";
           cErr.textContent = (e && e.detail ? "Formspree said: " + e.detail + ". " : "We could not send that just now. ") + "Please check your details and try again, or email us instead."; cMail.hidden = false; });
     });
