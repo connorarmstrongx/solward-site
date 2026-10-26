@@ -29,11 +29,11 @@
       ]
     },
     {
-      "source": "/(.*)\\.(png|ico)",
+      "source": "/(.*)\\.(png|ico|woff)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=604800"
+          "value": "public, max-age=2592000"
         }
       ]
     },

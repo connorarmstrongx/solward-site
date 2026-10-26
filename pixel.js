@@ -7,7 +7,9 @@ n.callMethod.apply(n,arguments):n.queue.push(arguments)};
 if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
 n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
+var go=function(){s.parentNode.insertBefore(t,s)};
+/* load after the page has finished, so it never competes with first paint */
+if(b.readyState==='complete')go();else f.addEventListener('load',function(){setTimeout(go,0)})}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '1059950200339050');
 fbq('track', 'PageView');

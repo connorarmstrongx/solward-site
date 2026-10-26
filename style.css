@@ -1,3 +1,4 @@
+@font-face{ font-family:"Manrope"; src:url("/manrope.woff") format("woff"); font-weight:400 700; font-style:normal; font-display:swap; }
 
 :root{
   --forest:#1B4A3E;
